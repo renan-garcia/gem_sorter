@@ -1,6 +1,6 @@
-# GemfileSorter
+# GemSorter
 
-GemfileSorter is a simple gem to sort the contents of your Gemfile alphabetically while preserving comments and group structure. It helps maintain a clean and organized Gemfile.
+GemSorter is a simple gem to sort the contents of your Gemfile alphabetically while preserving comments and group structure. It helps maintain a clean and organized Gemfile.
 
 ## Features
 * Sorts gems alphabetically.
