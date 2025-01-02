@@ -1,8 +1,8 @@
-# lib/gemfile_sorter.rb
+# lib/gem_sorter.rb
 
-load File.expand_path('tasks/gemfile_sorter.rake', __dir__) if defined?(Rake)
+load File.expand_path('tasks/gem_sorter.rake', __dir__) if defined?(Rake)
 
-module GemfileSorter
+module GemSorter
   class Sorter
     def initialize(filepath)
       @filepath = filepath

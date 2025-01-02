@@ -12,7 +12,7 @@ GemfileSorter is a simple gem to sort the contents of your Gemfile alphabeticall
 Add the gem to your project's `Gemfile`:
 
 ```ruby
-gem "gemfile_sorter"
+gem "gem_sorter"
 ```
 
 ## Usage
@@ -69,11 +69,11 @@ To contribute to this project:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/renan-garcia/gemfile_sorter.git
+   git clone https://github.com/renan-garcia/gem_sorter.git
    ```
 2. Navigate to the project directory:
    ```bash
-   cd gemfile_sorter
+   cd gem_sorter
    ```
 3. Install dependencies:
    ```bash

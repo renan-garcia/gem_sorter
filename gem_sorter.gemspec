@@ -1,13 +1,13 @@
-require_relative 'lib/gemfile_sorter/version'
+require_relative 'lib/gem_sorter/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = 'gemfile_sorter'
+  spec.name          = 'gem_sorter'
   spec.version       = GemfileSorter::VERSION
   spec.authors       = ['Renan Garcia']
   spec.email         = ['email@renangarcia.me']
   spec.summary       = 'Sort gems in the Gemfile alphabetically'
   spec.description   = 'A simple gem to sort the gems in your Gemfile while preserving comments and groups'
-  spec.homepage      = 'https://github.com/renan-garcia/gemfile_sorter'
+  spec.homepage      = 'https://github.com/renan-garcia/gem_sorter'
   spec.license       = 'MIT'
   spec.required_ruby_version = '>= 2.6.0'
 

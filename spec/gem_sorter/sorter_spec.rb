@@ -1,8 +1,8 @@
 require 'spec_helper'
-require 'gemfile_sorter'
+require 'gem_sorter'
 require 'fileutils'
 
-RSpec.describe GemfileSorter::Sorter do
+RSpec.describe GemSorter::Sorter do
   let(:gemfile_content) do
     <<~GEMFILE
       source "https://rubygems.org"

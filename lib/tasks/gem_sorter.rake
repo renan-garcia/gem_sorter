@@ -1,4 +1,4 @@
-require 'gemfile_sorter'
+require 'gem_sorter'
 
 namespace :gemfile do
   desc 'Sort gems in Gemfile alphabetically'
@@ -12,7 +12,7 @@ namespace :gemfile do
         puts 'Original Gemfile backed up as Gemfile.old'
       end
 
-      sorter = GemfileSorter::Sorter.new(gemfile_path)
+      sorter = Gem::Sorter.new(gemfile_path)
       sorted_content = sorter.sort
 
       File.write(gemfile_path, sorted_content)
