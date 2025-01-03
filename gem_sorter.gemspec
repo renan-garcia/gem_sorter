@@ -2,7 +2,7 @@ require_relative 'lib/gem_sorter/version'
 
 Gem::Specification.new do |spec|
   spec.name          = 'gem_sorter'
-  spec.version       = GemfileSorter::VERSION
+  spec.version       = GemSorter::VERSION
   spec.authors       = ['Renan Garcia']
   spec.email         = ['email@renangarcia.me']
   spec.summary       = 'Sort gems in the Gemfile alphabetically'

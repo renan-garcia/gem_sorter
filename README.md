@@ -7,6 +7,7 @@ GemSorter is a simple gem to sort the contents of your Gemfile alphabetically wh
 * Preserves comments and their association with gems.
 * Maintains group structure in the Gemfile.
 * Optionally creates a backup of the original Gemfile.
+* Update the comments of the gems based on their descriptions.
 
 ## Installation
 Add the gem to your project's `Gemfile`:
@@ -24,14 +25,16 @@ rake gemfile:sort
 
 ### Options
 * `backup`: Pass `true` to create a backup of your Gemfile as `Gemfile.old` before sorting.
+* `update_comments`: Pass `true` to update the comments of the gems based on their descriptions.
+* `update_versions`: Pass `true` to update the versions of the gems based on the lockfile.
 
 Example:
 
 ```bash
-rake gemfile:sort[true]
+rake gemfile:sort[true,true,true]
 ```
 
-This will sort your Gemfile and create a backup.
+This will sort your Gemfile, create a backup, and update comments and versions.
 
 ## Example
 ### Input Gemfile
@@ -40,12 +43,11 @@ source "https://rubygems.org"
 
 # Framework
 gem "rails"
-# Web server
-gem "puma"
+gem "puma", "~> 5.3"
 
 group :development do
-  gem "pry"
   gem "dotenv-rails"
+  gem "pry"
 end
 ```
 
@@ -53,13 +55,15 @@ end
 ```ruby
 source "https://rubygems.org"
 
-# Web server
-gem "puma"
-# Framework
-gem "rails"
+# A Ruby/Rack web server built for parallelism.
+gem "puma", "~> 5.3"
+# Full-stack web application framework.
+gem "rails", "~> 8.0", ">= 8.0.1"
 
 group :development do
-  gem "dotenv-rails"
+  # Autoload dotenv in Rails.
+  gem 'dotenv-rails', '~> 3.1', '>= 3.1.7'
+  # A runtime developer console and IRB alternative with powerful introspection capabilities.
   gem "pry"
 end
 ```

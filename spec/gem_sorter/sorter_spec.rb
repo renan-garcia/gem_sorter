@@ -106,6 +106,7 @@ RSpec.describe GemSorter::Sorter do
   end
 
   let(:temp_gemfile_path) { 'spec/fixtures/temp_gemfile' }
+  let(:temp_lockfile_path) { 'spec/fixtures/temp_gemfile.lock' }
 
   before do
     FileUtils.mkdir_p('spec/fixtures')
@@ -113,6 +114,7 @@ RSpec.describe GemSorter::Sorter do
 
   after do
     File.delete(temp_gemfile_path) if File.exist?(temp_gemfile_path)
+    File.delete(temp_lockfile_path) if File.exist?(temp_lockfile_path)
   end
 
   it 'sorts the Gemfile content alphabetically while preserving comments and groups' do
@@ -127,5 +129,111 @@ RSpec.describe GemSorter::Sorter do
     sorter = described_class.new(temp_gemfile_path)
     sorted_content = sorter.sort
     expect(sorted_content.strip).to eq(expected_complex_sorted_content.strip)
+  end
+
+  it 'updates gem comments based on gem summaries when update_comments is true' do
+    allow_any_instance_of(GemSorter::Sorter).to receive(:get_summary).and_return("Sample gem description")
+    
+    File.write(temp_gemfile_path, gemfile_content)
+    sorter = described_class.new(temp_gemfile_path)
+    sorted_content = sorter.sort(true)
+    
+    expect(sorted_content).to include("# Sample gem description")
+  end
+
+  it 'raises an error when the file does not exist' do
+    non_existent_path = 'spec/fixtures/non_existent_gemfile'
+    expect { described_class.new(non_existent_path) }.to raise_error(Errno::ENOENT)
+  end
+
+  it 'handles unusual nested groups correctly' do
+    unusual_gemfile_content = <<~GEMFILE
+      source "https://rubygems.org"
+
+      group :development do
+        group :sub_group do
+          gem "nested_gem"
+        end
+      end
+    GEMFILE
+
+    File.write(temp_gemfile_path, unusual_gemfile_content)
+    sorter = described_class.new(temp_gemfile_path)
+    sorted_content = sorter.sort
+    expect(sorted_content).to include('gem "nested_gem"')
+  end
+
+  it 'updates gem versions based on the lockfile when update_versions is true' do
+    lockfile_content = <<~LOCKFILE
+      GEM
+        remote: https://rubygems.org/
+        specs:
+          rails (8.0.0)
+          sinatra (4.1.0)
+          faker (3.5.0)
+    LOCKFILE
+
+    gemfile_real_content = <<~GEMFILE
+      source "https://rubygems.org"
+
+      # Comment for gem A
+      gem "rails"
+      gem "sinatra", group: :development
+
+      group :test do
+        gem "rspec"
+        gem "faker"
+      end
+    GEMFILE
+
+    File.write(temp_gemfile_path, gemfile_real_content)
+    File.write(temp_lockfile_path, lockfile_content)
+
+    sorter = described_class.new(temp_gemfile_path)
+    sorted_content = sorter.sort(false, true)
+
+    expect(sorted_content).to include("gem 'rails', '~> 8.0'")
+    expect(sorted_content).to include("gem 'sinatra', '~> 4.1'")
+    expect(sorted_content).to include('gem "faker"')
+  end
+
+  it 'without mock adds the correct comment for gem "rails" when update_comments is true' do    
+    simple_gemfile_content = <<~GEMFILE
+      source "https://rubygems.org"
+
+      gem "rails"
+    GEMFILE
+
+    expected_simple_sorted_content = <<~GEMFILE
+      source "https://rubygems.org"
+
+      # Full-stack web application framework.
+      gem "rails"
+    GEMFILE
+
+    File.write(temp_gemfile_path, simple_gemfile_content)
+    sorter = described_class.new(temp_gemfile_path)
+    sorted_content = sorter.sort(true)
+
+    expect(sorted_content.strip).to eq(expected_simple_sorted_content.strip)
+  end  
+
+  it 'sorts gems with similar names correctly' do
+    similar_gemfile_content = <<~GEMFILE
+      source "https://rubygems.org"
+
+      gem "rails_admin"
+      gem "rails"
+    GEMFILE
+
+    File.write(temp_gemfile_path, similar_gemfile_content)
+    sorter = described_class.new(temp_gemfile_path)
+    sorted_content = sorter.sort
+    expect(sorted_content.strip).to eq(<<~GEMFILE.strip)
+      source "https://rubygems.org"
+
+      gem "rails"
+      gem "rails_admin"
+    GEMFILE
   end
 end
