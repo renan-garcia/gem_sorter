@@ -37,9 +37,32 @@ Example:
 ```bash
 rake gemfile:sort[true,true,true]
 ```
-
 This will sort your Gemfile, create a backup, and update comments and versions.
 
+### Options File
+Create a file in the root of your project called `gem_sorter.yml`
+* `backup`: Pass `true` to create a backup of your Gemfile as `Gemfile.old` before sorting.
+* `update_comments`: Pass `true` to update the comments of the gems based on their descriptions.
+* `update_versions`: Pass `true` to update the versions of the gems based on the lockfile.
+* `ignore_gems`: Pass an array of GEMs you want to ignore versions and comments
+* `ignore_gem_versions`: Pass an array of GEMs you want to ignore versions
+* `ignore_gem_comments`: Pass an array of GEMs you want to ignore comments
+
+Example:
+
+```yaml
+backup: true
+update_comments: true
+update_versions: false
+ignore_gems:
+  - byebug
+  - discard
+ignore_gem_versions:
+  - rspec
+ignore_gem_comments:
+  - otpor
+```
+This will sort your Gemfile, create a backup, and update comments and versions.
 ## Example
 ### Input Gemfile
 ```ruby

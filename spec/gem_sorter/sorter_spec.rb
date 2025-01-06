@@ -1,6 +1,8 @@
 require 'spec_helper'
 require 'gem_sorter'
+require 'task_config'
 require 'fileutils'
+require 'debug'
 
 RSpec.describe GemSorter::Sorter do
   let(:gemfile_content) do
@@ -119,14 +121,16 @@ RSpec.describe GemSorter::Sorter do
 
   it 'sorts the Gemfile content alphabetically while preserving comments and groups' do
     File.write(temp_gemfile_path, gemfile_content)
-    sorter = described_class.new(temp_gemfile_path)
+    task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path)
+    sorter = described_class.new(task_config)
     sorted_content = sorter.sort
     expect(sorted_content.strip).to eq(expected_sorted_content.strip)
   end
 
   it 'sorts a complex and messy Gemfile with comments alphabetically while preserving comments and groups' do
     File.write(temp_gemfile_path, complex_gemfile_content)
-    sorter = described_class.new(temp_gemfile_path)
+    task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path)
+    sorter = described_class.new(task_config)
     sorted_content = sorter.sort
     expect(sorted_content.strip).to eq(expected_complex_sorted_content.strip)
   end
@@ -135,15 +139,17 @@ RSpec.describe GemSorter::Sorter do
     allow_any_instance_of(GemSorter::Sorter).to receive(:get_summary).and_return("Sample gem description")
     
     File.write(temp_gemfile_path, gemfile_content)
-    sorter = described_class.new(temp_gemfile_path)
-    sorted_content = sorter.sort(true)
+    task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path, update_comments: true)
+    sorter = described_class.new(task_config)
+    sorted_content = sorter.sort
     
     expect(sorted_content).to include("# Sample gem description")
   end
 
   it 'raises an error when the file does not exist' do
     non_existent_path = 'spec/fixtures/non_existent_gemfile'
-    expect { described_class.new(non_existent_path) }.to raise_error(Errno::ENOENT)
+    task_config = GemSorter::TaskConfig.new(gemfile_path: non_existent_path)
+    expect { described_class.new(task_config) }.to raise_error(Errno::ENOENT)
   end
 
   it 'handles unusual nested groups correctly' do
@@ -158,7 +164,8 @@ RSpec.describe GemSorter::Sorter do
     GEMFILE
 
     File.write(temp_gemfile_path, unusual_gemfile_content)
-    sorter = described_class.new(temp_gemfile_path)
+    task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path)
+    sorter = described_class.new(task_config)
     sorted_content = sorter.sort
     expect(sorted_content).to include('gem "nested_gem"')
   end
@@ -189,8 +196,10 @@ RSpec.describe GemSorter::Sorter do
     File.write(temp_gemfile_path, gemfile_real_content)
     File.write(temp_lockfile_path, lockfile_content)
 
-    sorter = described_class.new(temp_gemfile_path)
-    sorted_content = sorter.sort(false, true)
+    task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path, update_versions: true)
+
+    sorter = described_class.new(task_config)
+    sorted_content = sorter.sort
 
     expect(sorted_content).to include("gem 'rails', '~> 8.0'")
     expect(sorted_content).to include("gem 'sinatra', '~> 4.1'")
@@ -212,8 +221,9 @@ RSpec.describe GemSorter::Sorter do
     GEMFILE
 
     File.write(temp_gemfile_path, simple_gemfile_content)
-    sorter = described_class.new(temp_gemfile_path)
-    sorted_content = sorter.sort(true)
+    task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path, update_comments: true)
+    sorter = described_class.new(task_config)
+    sorted_content = sorter.sort
 
     expect(sorted_content.strip).to eq(expected_simple_sorted_content.strip)
   end  
@@ -227,13 +237,77 @@ RSpec.describe GemSorter::Sorter do
     GEMFILE
 
     File.write(temp_gemfile_path, similar_gemfile_content)
-    sorter = described_class.new(temp_gemfile_path)
+    task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path)
+    sorter = described_class.new(task_config)
     sorted_content = sorter.sort
+
     expect(sorted_content.strip).to eq(<<~GEMFILE.strip)
       source "https://rubygems.org"
 
       gem "rails"
       gem "rails_admin"
     GEMFILE
+  end
+
+
+  it 'ignores GEM comments correctly' do
+    similar_gemfile_content = <<~GEMFILE
+      source "https://rubygems.org"
+
+      gem "rails_admin"
+      gem "rails"
+    GEMFILE
+
+    File.write(temp_gemfile_path, similar_gemfile_content)
+    task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path, update_comments: true, ignore_gem_comments: ['rails_admin'])
+    sorter = described_class.new(task_config)
+    sorted_content = sorter.sort
+
+    expect(sorted_content.strip).to eq(<<~GEMFILE.strip)
+      source "https://rubygems.org"
+
+      # Full-stack web application framework.
+      gem "rails"
+      gem "rails_admin"
+    GEMFILE
+  end
+
+
+  it 'ignores GEM versions correctly' do
+    lockfile_content = <<~LOCKFILE
+      GEM
+        remote: https://rubygems.org/
+        specs:
+          rails (8.0.0)
+          sinatra (4.1.0)
+          faker (3.4.2)
+          rspec (3.12.0)
+    LOCKFILE
+
+    gemfile_real_content = <<~GEMFILE
+      source "https://rubygems.org"
+
+      # Comment for gem A
+      gem "rails"
+      gem "sinatra", group: :development
+
+      group :test do
+        gem "rspec"
+        gem "faker"
+      end
+    GEMFILE
+
+    File.write(temp_gemfile_path, gemfile_real_content)
+    File.write(temp_lockfile_path, lockfile_content)
+
+    task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path, update_versions: true, ignore_gem_versions: ['sinatra'])
+
+    sorter = described_class.new(task_config)
+    sorted_content = sorter.sort
+
+    expect(sorted_content).to include("gem 'rails', '~> 8.0'")
+    expect(sorted_content).to include('gem "sinatra", group: :development')
+    expect(sorted_content).to include("gem 'faker', '~> 3.4'")
+    expect(sorted_content).to include("gem 'rspec', '~> 3.12'")
   end
 end

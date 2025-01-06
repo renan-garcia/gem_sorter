@@ -6,21 +6,22 @@ load File.expand_path('tasks/gem_sorter.rake', __dir__) if defined?(Rake)
 
 module GemSorter
   class Sorter
-    def initialize(filepath)
-      @filepath = filepath
-      @content = File.read(filepath)
+    def initialize(task_config)
+      @config = task_config
+      @filepath = task_config.gemfile_path
+      @content = File.read(task_config.gemfile_path)
       @versions = nil
     end
 
-    def sort(update_comments = false, update_versions = false)
+    def sort
       parts = @content.split(/^group/)
       main_section = parts.shift
       group_sections = parts
 
       source_line, gems = process_main_section(main_section)
 
-      update_gem_summaries(gems) if update_comments
-      update_version_text(gems) if update_versions
+      update_gem_summaries(gems) if @config.update_comments
+      update_version_text(gems) if @config.update_versions
 
       sorted_gems = sort_gem_blocks(gems)
 
@@ -32,8 +33,8 @@ module GemSorter
 
       group_sections.each do |section|
         group_gems = process_group_section(section)
-        update_gem_summaries(group_gems) if update_comments
-        update_version_text(group_gems) if update_versions
+        update_gem_summaries(group_gems) if @config.update_comments
+        update_version_text(group_gems) if @config.update_versions
         result << "group#{section.split("\n").first}"
         result.concat(sort_gem_blocks(group_gems).map { |line| "  #{line}" })
         result << 'end'
@@ -49,6 +50,8 @@ module GemSorter
       @versions ||= fetch_versions_from_lockfile("#{@filepath}.lock")
       gems.each do |gem_block|
         gem_name = gem_block[:gem_line].match(/gem\s*"([^"]+)"/)[1]
+        next if @config.ignore_gems.include?(gem_name) || @config.ignore_gem_versions.include?(gem_name)
+
         version = @versions[gem_name]
         extra_params = extract_params(gem_block[:gem_line])
         base = version ? "#{fetch_gemfile_text(gem_name, version, gem_block[:gem_line])}" : gem_block[:gem_line]
@@ -73,6 +76,8 @@ module GemSorter
     def update_gem_summaries(gems)
       gems.each do |gem_block|
         gem_name = gem_block[:gem_line].match(/gem\s*"([^"]+)"/)[1]
+        next if @config.ignore_gems.include?(gem_name) || @config.ignore_gem_comments.include?(gem_name)
+
         if summary = get_summary(gem_name, false)
           gem_block[:comments] = ["# #{summary}"]
         end
