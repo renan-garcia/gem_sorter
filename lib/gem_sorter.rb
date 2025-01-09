@@ -49,39 +49,43 @@ module GemSorter
     def update_version_text(gems)
       @versions ||= fetch_versions_from_lockfile("#{@filepath}.lock")
       gems.each do |gem_block|
-        gem_name = gem_block[:gem_line].match(/gem\s*"([^"]+)"/)[1]
+        gem_name =  extract_gem_name(gem_block[:gem_line])
         next if @config.ignore_gems.include?(gem_name) || @config.ignore_gem_versions.include?(gem_name)
 
         version = @versions[gem_name]
         extra_params = extract_params(gem_block[:gem_line])
         base = version ? "#{fetch_gemfile_text(gem_name, version, gem_block[:gem_line])}" : gem_block[:gem_line]
-        return base if base == gem_block[:gem_line]
-
-        gem_block[:gem_line] = [base, extra_params].select { |value| !value.nil? && !value.empty? }.join(',')
+        if base != gem_block[:gem_line]
+          gem_block[:gem_line] = [base.strip, extra_params].select { |value| !value.nil? && !value.empty? }.join(',')
+        end
       end
     end
 
     def extract_params(gem_line)
-      return nil unless gem_line =~ /gem\s*"([^"]+)"/
+      return nil unless gem_line =~ /gem\s+['"][^'"]+['"]/
 
-      if gem_line =~ /gem\s*"[^"]*"\s*,\s*(.*)/
+      if gem_line =~ /gem\s+['"][^'"]+['"]\s*,\s*(.*)/
         additional_params = $1.strip
         return nil if additional_params.empty?
-        params_with_colon = additional_params.scan(/(\w+:\s*[^,]+)/).flatten
-        return params_with_colon.join(', ') unless params_with_colon.empty?
+        params_with_colon = additional_params.scan(/(\w+:\s*[^,]+(?:,\s*[^,]+)*|\w+:\s*['"][^'"]+['"])/).flatten
+        return " #{params_with_colon.join(', ')}" unless params_with_colon.empty?
       end
       nil
     end
 
     def update_gem_summaries(gems)
       gems.each do |gem_block|
-        gem_name = gem_block[:gem_line].match(/gem\s*"([^"]+)"/)[1]
+        gem_name = extract_gem_name(gem_block[:gem_line])
         next if @config.ignore_gems.include?(gem_name) || @config.ignore_gem_comments.include?(gem_name)
 
         if summary = get_summary(gem_name, false)
           gem_block[:comments] = ["# #{summary}"]
         end
       end
+    end
+
+    def extract_gem_name(gem_line)
+      gem_line.match(/gem\s+['"]([^'"]+)['"]/)[1]
     end
 
     def process_main_section(section)
