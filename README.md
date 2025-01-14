@@ -19,12 +19,23 @@ Add the gem to your project's `Gemfile`:
 ```ruby
 gem "gem_sorter"
 ```
+or install it globally:
+
+```bash
+gem install gem_sorter
+```
 
 ## Usage
 Once installed, you can use the provided Rake task to sort your Gemfile:
 
 ```bash
 rake gemfile:sort
+```
+
+You can also run the gem_sorter globally, without needing to add it to your Gemfile:
+
+```bash
+rake -r gem_sorter gemfile:sort
 ```
 
 ### Options
