@@ -2,7 +2,6 @@ require 'spec_helper'
 require 'gem_sorter'
 require 'task_config'
 require 'fileutils'
-require 'debug'
 
 RSpec.describe GemSorter::Sorter do
   let(:gemfile_content) do
