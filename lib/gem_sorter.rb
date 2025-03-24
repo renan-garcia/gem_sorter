@@ -41,10 +41,48 @@ module GemSorter
         result << ''
       end
 
+      result = transform_to_double_quotes(result) if @config.use_double_quotes
+
       result.join("\n")
     end
 
     private
+
+    def transform_to_double_quotes(gem_file_content)
+      return gem_file_content unless gem_file_content.is_a?(Array) || gem_file_content.is_a?(String)
+      
+      content = gem_file_content.is_a?(Array) ? gem_file_content : gem_file_content.split("\n")
+      
+      transformed_content = content.map do |line|
+        next line if line.nil? || line.strip.empty?
+
+        if line.strip.start_with?('#')
+          line
+        elsif line.include?('gem') && line =~ /gem\s+[']/
+          begin
+            parts = line.split('#', 2)
+            main_part = parts[0]
+            comment_part = parts[1]
+            processed_main = main_part.gsub(/gem\s+'([^']+)'/) { |m| %Q{gem "#{$1}"} }
+            
+            if comment_part
+              "#{processed_main}##{comment_part}"
+            else
+              processed_main
+            end
+          rescue => e
+            puts "Error transforming to double quotes: #{e.message}"
+            line
+          end
+        elsif line.include?('source')
+          line.gsub("'", '"')
+        else
+          line
+        end
+      end
+      
+      gem_file_content.is_a?(Array) ? transformed_content : transformed_content.join("\n")
+    end
 
     def update_version_text(gems)
       @versions ||= fetch_versions_from_lockfile("#{@filepath}.lock")

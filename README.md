@@ -12,6 +12,7 @@ GemSorter is a simple gem to sort the contents of your Gemfile alphabetically wh
 * Maintains group structure in the Gemfile.
 * Optionally creates a backup of the original Gemfile.
 * Update the comments of the gems based on their descriptions.
+* Optionally converts single quotes to double quotes in gem declarations.
 
 ## Installation
 Add the gem to your project's `Gemfile`:
@@ -42,19 +43,21 @@ rake -r gem_sorter gemfile:sort
 * `backup`: Pass `true` to create a backup of your Gemfile as `Gemfile.old` before sorting.
 * `update_comments`: Pass `true` to update the comments of the gems based on their descriptions.
 * `update_versions`: Pass `true` to update the versions of the gems based on the lockfile.
+* `use_double_quotes`: Pass `true` to convert single quotes to double quotes in gem declarations.
 
 Example:
 
 ```bash
-rake gemfile:sort[true,true,true]
+rake gemfile:sort[true,true,true,true]
 ```
-This will sort your Gemfile, create a backup, and update comments and versions.
+This will sort your Gemfile, create a backup, update comments and versions, and convert single quotes to double quotes.
 
 ### Options File
 Create a file in the root of your project called `gem_sorter.yml`
 * `backup`: Pass `true` to create a backup of your Gemfile as `Gemfile.old` before sorting.
 * `update_comments`: Pass `true` to update the comments of the gems based on their descriptions.
 * `update_versions`: Pass `true` to update the versions of the gems based on the lockfile.
+* `use_double_quotes`: Pass `true` to convert single quotes to double quotes in gem declarations.
 * `ignore_gems`: Pass an array of GEMs you want to ignore versions and comments
 * `ignore_gem_versions`: Pass an array of GEMs you want to ignore versions
 * `ignore_gem_comments`: Pass an array of GEMs you want to ignore comments
@@ -65,6 +68,7 @@ Example:
 backup: true
 update_comments: true
 update_versions: false
+use_double_quotes: true
 ignore_gems:
   - byebug
   - discard
@@ -73,7 +77,8 @@ ignore_gem_versions:
 ignore_gem_comments:
   - otpor
 ```
-This will sort your Gemfile, create a backup, and update comments and versions.
+This will sort your Gemfile, create a backup, update comments, convert single quotes to double quotes, and ignore specific gems for different operations.
+
 ## Example
 ### Input Gemfile
 ```ruby

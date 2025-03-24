@@ -2,6 +2,7 @@ require 'spec_helper'
 require 'gem_sorter'
 require 'task_config'
 require 'fileutils'
+require 'debug'
 
 RSpec.describe GemSorter::Sorter do
   let(:gemfile_content) do
@@ -106,6 +107,42 @@ RSpec.describe GemSorter::Sorter do
     GEMFILE
   end
 
+  let(:gemfile_with_single_quotes) do
+    <<~GEMFILE
+      source 'https://rubygems.org'
+
+      # Comment for gem A
+      gem 'a_gem'
+      gem 'b_gem', group: :development
+      gem 'c_gem', '~> 2.0'
+      # Comment with a 'quoted string' inside
+      gem 'quoted_gem' # Inline comment with 'quotes'
+
+      group :test do
+        gem 'rspec'
+        gem 'faker'
+      end
+    GEMFILE
+  end
+
+  let(:expected_double_quotes_content) do
+    <<~GEMFILE
+      source 'https://rubygems.org'
+
+      # Comment for gem A
+      gem "a_gem"
+      gem "b_gem", group: :development
+      gem "c_gem", "~> 2.0"
+      # Comment with a 'quoted string' inside
+      gem "quoted_gem" # Inline comment with 'quotes'
+
+      group :test do
+        gem "rspec"
+        gem "faker"
+      end
+    GEMFILE
+  end
+
   let(:temp_gemfile_path) { 'spec/fixtures/temp_gemfile' }
   let(:temp_lockfile_path) { 'spec/fixtures/temp_gemfile.lock' }
 
@@ -124,6 +161,23 @@ RSpec.describe GemSorter::Sorter do
     sorter = described_class.new(task_config)
     sorted_content = sorter.sort
     expect(sorted_content.strip).to eq(expected_sorted_content.strip)
+  end
+
+  it 'converts single quotes to double quotes when use_double_quotes is true' do
+    File.write(temp_gemfile_path, gemfile_with_single_quotes)
+    task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path, use_double_quotes: 'true')
+    sorter = described_class.new(task_config)
+    result = sorter.sort
+
+    expect(result).to include('gem "a_gem"')
+    expect(result).to include('gem "b_gem"')
+    expect(result).to include('gem "c_gem"')
+    expect(result).to include('gem "quoted_gem"')
+    
+    expect(result).to include("# Comment with a 'quoted string' inside")
+    expect(result).to include("# Inline comment with 'quotes'")
+    
+    expect(result).to include('source "https://rubygems.org"')
   end
 
   it 'sorts a complex and messy Gemfile with comments alphabetically while preserving comments and groups' do
