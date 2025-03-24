@@ -63,7 +63,7 @@ module GemSorter
             parts = line.split('#', 2)
             main_part = parts[0]
             comment_part = parts[1]
-            processed_main = main_part.gsub(/gem\s+'([^']+)'/) { |m| %Q{gem "#{$1}"} }
+            processed_main = main_part.gsub("'", '"')
             
             if comment_part
               "#{processed_main}##{comment_part}"

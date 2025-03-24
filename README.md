@@ -77,7 +77,7 @@ ignore_gem_versions:
 ignore_gem_comments:
   - otpor
 ```
-This will sort your Gemfile, create a backup, update comments, convert single quotes to double quotes, and ignore specific gems for different operations.
+This will sort your Gemfile, create a backup, update comments, and ignore specific gems for different operations.
 
 ## Example
 ### Input Gemfile
