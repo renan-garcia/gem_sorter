@@ -363,4 +363,54 @@ RSpec.describe GemSorter::Sorter do
     expect(sorted_content).to include("gem 'faker', '~> 3.4'")
     expect(sorted_content).to include("gem 'rspec', '~> 3.12'")
   end
+
+  it 'removes versions from gems when remove_versions is true' do
+    gemfile_with_versions = <<~GEMFILE
+      source "https://rubygems.org"
+
+      gem "thruster", "~> 0.1.13", require: false
+      gem "countries", "~> 7.1", ">= 7.1.1"
+      gem "tzinfo-data", platforms: %i[ windows jruby ]
+    GEMFILE
+
+    expected_content = <<~GEMFILE
+      source "https://rubygems.org"
+
+      gem "countries"
+      gem "thruster", require: false
+      gem "tzinfo-data", platforms: %i[ windows jruby ]
+    GEMFILE
+
+    File.write(temp_gemfile_path, gemfile_with_versions)
+    task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path, remove_versions: true)
+    sorter = described_class.new(task_config)
+    sorted_content = sorter.sort
+
+    expect(sorted_content.strip).to eq(expected_content.strip)
+  end
+
+  it 'ignores gems when removing versions' do
+    gemfile_with_versions = <<~GEMFILE
+      source "https://rubygems.org"
+
+      gem "thruster", "~> 0.1.13", require: false
+      gem "countries", "~> 7.1", ">= 7.1.1"
+      gem "tzinfo-data", platforms: %i[ windows jruby ]
+    GEMFILE
+
+    expected_content = <<~GEMFILE
+      source "https://rubygems.org"
+
+      gem "countries", "~> 7.1", ">= 7.1.1"
+      gem "thruster", require: false
+      gem "tzinfo-data", platforms: %i[ windows jruby ]
+    GEMFILE
+
+    File.write(temp_gemfile_path, gemfile_with_versions)
+    task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path, remove_versions: true, ignore_gem_versions: ['countries'])
+    sorter = described_class.new(task_config)
+    sorted_content = sorter.sort
+
+    expect(sorted_content.strip).to eq(expected_content.strip)
+  end
 end

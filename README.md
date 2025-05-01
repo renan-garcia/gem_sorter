@@ -13,6 +13,7 @@ GemSorter is a simple gem to sort the contents of your Gemfile alphabetically wh
 * Optionally creates a backup of the original Gemfile.
 * Update the comments of the gems based on their descriptions.
 * Optionally converts single quotes to double quotes in gem declarations.
+* Optionally removes version constraints from gems while preserving other parameters.
 
 ## Installation
 Add the gem to your project's `Gemfile`:
@@ -44,13 +45,14 @@ rake -r gem_sorter gemfile:sort
 * `update_comments`: Pass `true` to update the comments of the gems based on their descriptions.
 * `update_versions`: Pass `true` to update the versions of the gems based on the lockfile.
 * `use_double_quotes`: Pass `true` to convert single quotes to double quotes in gem declarations.
+* `remove_versions`: Pass `true` to remove version constraints from gems while preserving other parameters like `require` or `platforms`. This option takes precedence over `update_versions` if both are enabled.
 
 Example:
 
 ```bash
-rake gemfile:sort[true,true,true,true]
+rake gemfile:sort[true,true,true,true,true]
 ```
-This will sort your Gemfile, create a backup, update comments and versions, and convert single quotes to double quotes.
+This will sort your Gemfile, create a backup, update comments and versions, convert single quotes to double quotes, and remove version constraints.
 
 ### Options File
 Create a file in the root of your project called `gem_sorter.yml`
@@ -58,6 +60,7 @@ Create a file in the root of your project called `gem_sorter.yml`
 * `update_comments`: Pass `true` to update the comments of the gems based on their descriptions.
 * `update_versions`: Pass `true` to update the versions of the gems based on the lockfile.
 * `use_double_quotes`: Pass `true` to convert single quotes to double quotes in gem declarations.
+* `remove_versions`: Pass `true` to remove version constraints from gems while preserving other parameters like `require` or `platforms`. This option takes precedence over `update_versions` if both are enabled.
 * `ignore_gems`: Pass an array of GEMs you want to ignore versions and comments
 * `ignore_gem_versions`: Pass an array of GEMs you want to ignore versions
 * `ignore_gem_comments`: Pass an array of GEMs you want to ignore comments
@@ -69,6 +72,7 @@ backup: true
 update_comments: true
 update_versions: false
 use_double_quotes: true
+remove_versions: true
 ignore_gems:
   - byebug
   - discard
@@ -77,7 +81,7 @@ ignore_gem_versions:
 ignore_gem_comments:
   - otpor
 ```
-This will sort your Gemfile, create a backup, update comments, and ignore specific gems for different operations.
+This will sort your Gemfile, create a backup, update comments, remove version constraints, and ignore specific gems for different operations.
 
 ## Example
 ### Input Gemfile
@@ -87,6 +91,9 @@ source "https://rubygems.org"
 # Framework
 gem "rails"
 gem "puma", "~> 5.3"
+gem "thruster", "~> 0.1.13", require: false
+gem "countries", "~> 7.1", ">= 7.1.1"
+gem "tzinfo-data", platforms: %i[ windows jruby ]
 
 group :development do
   gem "dotenv-rails"
@@ -102,10 +109,33 @@ source "https://rubygems.org"
 gem "puma", "~> 5.3"
 # Full-stack web application framework.
 gem "rails", "~> 8.0", ">= 8.0.1"
+gem "thruster", "~> 0.1.13", require: false
+gem "countries", "~> 7.1", ">= 7.1.1"
+gem "tzinfo-data", platforms: %i[ windows jruby ]
 
 group :development do
   # Autoload dotenv in Rails.
-  gem 'dotenv-rails', '~> 3.1', '>= 3.1.7'
+  gem "dotenv-rails", "~> 3.1", ">= 3.1.7"
+  # A runtime developer console and IRB alternative with powerful introspection capabilities.
+  gem "pry"
+end
+```
+
+### Output Gemfile (with remove_versions: true)
+```ruby
+source "https://rubygems.org"
+
+# A Ruby/Rack web server built for parallelism.
+gem "puma"
+# Full-stack web application framework.
+gem "rails"
+gem "thruster", require: false
+gem "countries"
+gem "tzinfo-data", platforms: %i[ windows jruby ]
+
+group :development do
+  # Autoload dotenv in Rails.
+  gem "dotenv-rails"
   # A runtime developer console and IRB alternative with powerful introspection capabilities.
   gem "pry"
 end

@@ -22,7 +22,7 @@ module GemSorter
 
       update_gem_summaries(gems) if @config.update_comments
       update_version_text(gems) if @config.update_versions
-
+      remove_versions(gems) if @config.remove_versions
       sorted_gems = sort_gem_blocks(gems)
 
       result = []
@@ -35,6 +35,7 @@ module GemSorter
         group_gems = process_group_section(section)
         update_gem_summaries(group_gems) if @config.update_comments
         update_version_text(group_gems) if @config.update_versions
+        remove_versions(group_gems) if @config.remove_versions
         result << "group#{section.split("\n").first}"
         result.concat(sort_gem_blocks(group_gems).map { |line| "  #{line}" })
         result << 'end'
@@ -95,6 +96,21 @@ module GemSorter
         base = version ? "#{fetch_gemfile_text(gem_name, version, gem_block[:gem_line])}" : gem_block[:gem_line]
         if base != gem_block[:gem_line]
           gem_block[:gem_line] = [base.strip, extra_params].select { |value| !value.nil? && !value.empty? }.join(',')
+        end
+      end
+    end
+
+    def remove_versions(gems)
+      gems.each do |gem_block|
+        gem_name =  extract_gem_name(gem_block[:gem_line])
+        next if @config.ignore_gems.include?(gem_name) || @config.ignore_gem_versions.include?(gem_name)
+
+        extra_params = extract_params(gem_block[:gem_line])
+        base = gem_block[:gem_line].match(/gem\s+['"][^'"]+['"]/)[0]
+        if extra_params
+          gem_block[:gem_line] = "#{base},#{extra_params}"
+        else
+          gem_block[:gem_line] = base
         end
       end
     end
