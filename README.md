@@ -2,6 +2,8 @@
   <img src="https://i.imgur.com/WHOyL9W.png" width="150" alt="GemSorter Logo">
 </p>
 
+[![Gem Version](https://badge.fury.io/rb/gem_sorter.svg)](https://badge.fury.io/rb/gem_sorter)
+
 # GemSorter
 
 GemSorter is a simple gem to sort the contents of your Gemfile alphabetically while preserving comments and group structure. It helps maintain a clean and organized Gemfile.
