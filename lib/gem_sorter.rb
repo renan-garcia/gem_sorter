@@ -15,11 +15,13 @@ module GemSorter
     end
 
     def sort
+      ruby_line = extract_ruby_line(@content)
+      
       parts = @content.split(/^group/)
       main_section = parts.shift
       group_sections = parts
 
-      source_line, gems = process_main_section(main_section)
+      source_line, gems, _ = process_main_section(main_section)
 
       update_gem_summaries(gems) if @config.update_comments
       update_version_text(gems) if @config.update_versions
@@ -28,6 +30,10 @@ module GemSorter
 
       result = []
       result << source_line
+      if ruby_line
+        result << ''
+        result << ruby_line
+      end
       result << ''
       result.concat(sorted_gems)
       result << ''
@@ -49,6 +55,12 @@ module GemSorter
     end
 
     private
+
+    def extract_ruby_line(content)
+      lines = content.split("\n")
+      ruby_line = lines.find { |line| line.strip.start_with?('ruby') }
+      ruby_line&.strip
+    end
 
     def transform_to_double_quotes(gem_file_content)
       return gem_file_content unless gem_file_content.is_a?(Array) || gem_file_content.is_a?(String)
@@ -148,11 +160,14 @@ module GemSorter
       source_line = lines.shift
 
       gems = []
+      ruby_line = nil
       current_comments = []
 
       lines.each do |line|
         if line.start_with?('#')
           current_comments << line
+        elsif line.start_with?('ruby')
+          ruby_line = line
         elsif line.start_with?('gem')
           gems << {
             comments: current_comments,
@@ -162,7 +177,7 @@ module GemSorter
         end
       end
 
-      [source_line, gems]
+      [source_line, gems, ruby_line]
     end
 
     def process_group_section(section)

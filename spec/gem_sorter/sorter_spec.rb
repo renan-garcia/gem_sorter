@@ -413,4 +413,101 @@ RSpec.describe GemSorter::Sorter do
 
     expect(sorted_content.strip).to eq(expected_content.strip)
   end
+
+  it 'preserves ruby version line after source line' do
+    gemfile_with_ruby = <<~GEMFILE
+      source "https://rubygems.org"
+      ruby "3.4.5"
+
+      gem "rails"
+      gem "sinatra", group: :development
+
+      group :test do
+        gem "rspec"
+        gem "faker"
+      end
+    GEMFILE
+
+    expected_content = <<~GEMFILE
+      source "https://rubygems.org"
+
+      ruby "3.4.5"
+
+      gem "rails"
+      gem "sinatra", group: :development
+
+      group :test do
+        gem "faker"
+        gem "rspec"
+      end
+    GEMFILE
+
+    File.write(temp_gemfile_path, gemfile_with_ruby)
+    task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path)
+    sorter = described_class.new(task_config)
+    sorted_content = sorter.sort
+
+    expect(sorted_content.strip).to eq(expected_content.strip)
+  end
+
+  it 'preserves ruby version line with different formatting' do
+    gemfile_with_ruby = <<~GEMFILE
+      source "https://rubygems.org"
+      ruby '3.4.5'
+
+      gem "rails"
+    GEMFILE
+
+    expected_content = <<~GEMFILE
+      source "https://rubygems.org"
+
+      ruby '3.4.5'
+
+      gem "rails"
+    GEMFILE
+
+    File.write(temp_gemfile_path, gemfile_with_ruby)
+    task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path)
+    sorter = described_class.new(task_config)
+    sorted_content = sorter.sort
+
+    expect(sorted_content.strip).to eq(expected_content.strip)
+  end
+
+  it 'moves ruby version line to correct position when misplaced' do
+    gemfile_with_misplaced_ruby = <<~GEMFILE
+      source "https://rubygems.org"
+
+      gem "rails"
+      gem "sinatra", group: :development
+
+      group :test do
+        gem "faker"
+        gem "rspec"
+      end
+
+      ruby "3.4.5"
+    GEMFILE
+
+    expected_content = <<~GEMFILE
+      source "https://rubygems.org"
+
+      ruby "3.4.5"
+
+      gem "rails"
+      gem "sinatra", group: :development
+
+      group :test do
+        gem "faker"
+        gem "rspec"
+      end
+    GEMFILE
+
+    File.write(temp_gemfile_path, gemfile_with_misplaced_ruby)
+    task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path)
+    sorter = described_class.new(task_config)
+    sorted_content = sorter.sort
+
+    expect(sorted_content.strip).to eq(expected_content.strip)
+  end
 end
