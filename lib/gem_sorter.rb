@@ -1,6 +1,7 @@
 # lib/gem_sorter.rb
 require 'net/http'
 require 'cgi'
+require 'openssl'
 
 load File.expand_path('tasks/gem_sorter.rake', __dir__) if defined?(Rake)
 
@@ -215,7 +216,7 @@ module GemSorter
         return get_summary(gem_name, true) unless remote
         nil
       end
-    rescue StandardError => e
+    rescue StandardError
       nil
     end
 
@@ -224,11 +225,18 @@ module GemSorter
       url = URI(version ? "#{base_url}/versions/#{version.strip}" : base_url)
 
       begin
-        response = Net::HTTP.get(url)
-        unless response
-          raise "Error: Could not fetch gem information from RubyGems for #{gem_name} version #{version}."
+        http = Net::HTTP.new(url.host, url.port)
+        http.use_ssl = true
+        http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+        
+        request = Net::HTTP::Get.new(url)
+        response = http.request(request)
+        
+        unless response.is_a?(Net::HTTPSuccess)
+          raise "Error: Could not fetch gem information from RubyGems for #{gem_name} version #{version}. Status: #{response.code}"
         end
-        match = response.match(/<input[^>]*id=["']gemfile_text["'][^>]*value=["']([^"']+)["']/)
+        
+        match = response.body.match(/<input[^>]*id=["']gemfile_text["'][^>]*value=["']([^"']+)["']/)
 
         if match
           CGI.unescapeHTML(match[1])
