@@ -2,6 +2,7 @@
 require 'net/http'
 require 'cgi'
 require 'openssl'
+require 'json'
 
 load File.expand_path('tasks/gem_sorter.rake', __dir__) if defined?(Rake)
 
@@ -12,6 +13,7 @@ module GemSorter
       @filepath = task_config.gemfile_path
       @content = File.read(task_config.gemfile_path)
       @versions = nil
+      @version_updates = []
     end
 
     def sort
@@ -24,7 +26,11 @@ module GemSorter
       source_line, gems, _ = process_main_section(main_section)
 
       update_gem_summaries(gems) if @config.update_comments
-      update_version_text(gems) if @config.update_versions
+      if @config.force_update
+        force_update_versions(gems)
+      elsif @config.update_versions
+        update_version_text(gems)
+      end
       remove_versions(gems) if @config.remove_versions
       sorted_gems = sort_gem_blocks(gems)
 
@@ -41,7 +47,11 @@ module GemSorter
       group_sections.each do |section|
         group_gems = process_group_section(section)
         update_gem_summaries(group_gems) if @config.update_comments
-        update_version_text(group_gems) if @config.update_versions
+        if @config.force_update
+          force_update_versions(group_gems)
+        elsif @config.update_versions
+          update_version_text(group_gems)
+        end
         remove_versions(group_gems) if @config.remove_versions
         result << "group#{section.split("\n").first}"
         result.concat(sort_gem_blocks(group_gems).map { |line| "  #{line}" })
@@ -50,6 +60,8 @@ module GemSorter
       end
 
       result = transform_to_double_quotes(result) if @config.use_double_quotes
+
+      print_version_updates if @config.force_update && !@version_updates.empty?
 
       result.join("\n")
     end
@@ -109,6 +121,43 @@ module GemSorter
         base = version ? "#{fetch_gemfile_text(gem_name, version, gem_block[:gem_line])}" : gem_block[:gem_line]
         if base != gem_block[:gem_line]
           gem_block[:gem_line] = [base.strip, extra_params].select { |value| !value.nil? && !value.empty? }.join(',')
+        end
+      end
+    end
+
+    def force_update_versions(gems)
+      @versions ||= fetch_versions_from_lockfile("#{@filepath}.lock")
+      
+      gems.each do |gem_block|
+        gem_name = extract_gem_name(gem_block[:gem_line])
+        next if @config.ignore_gems.include?(gem_name) || @config.ignore_gem_versions.include?(gem_name)
+
+        # Try to get current version from lockfile first, then from gem line
+        current_version = @versions[gem_name] || extract_current_version(gem_block[:gem_line])
+        latest_version = fetch_latest_version(gem_name)
+        
+        next unless latest_version
+
+        extra_params = extract_params(gem_block[:gem_line])
+        new_gemfile_text = fetch_gemfile_text(gem_name, latest_version, gem_block[:gem_line])
+        
+        next unless new_gemfile_text && new_gemfile_text != gem_block[:gem_line]
+        
+        gem_block[:gem_line] = [new_gemfile_text.strip, extra_params].select { |value| !value.nil? && !value.empty? }.join(',')
+        
+        # Track version update if version changed
+        # Compare semantic versions (x.y.z) for accurate comparison
+        current_semantic = current_version&.match(/(\d+\.\d+\.\d+)/)
+        current_semantic = current_semantic ? current_semantic[1] : nil
+        latest_semantic = latest_version.match(/(\d+\.\d+\.\d+)/)
+        latest_semantic = latest_semantic ? latest_semantic[1] : nil
+        
+        if current_semantic != latest_semantic
+          @version_updates << {
+            gem_name: gem_name,
+            from_version: current_version || 'no version specified',
+            to_version: latest_version
+          }
         end
       end
     end
@@ -289,6 +338,52 @@ module GemSorter
         end
       end
       versions
+    end
+
+    def fetch_latest_version(gem_name)
+      url = URI("https://rubygems.org/api/v1/gems/#{gem_name.strip}.json")
+
+      begin
+        http = Net::HTTP.new(url.host, url.port)
+        http.use_ssl = true
+        http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+        
+        request = Net::HTTP::Get.new(url)
+        response = http.request(request)
+        
+        unless response.is_a?(Net::HTTPSuccess)
+          return nil
+        end
+        
+        gem_data = JSON.parse(response.body)
+        gem_data['version']
+      rescue => e
+        nil
+      end
+    end
+
+    def extract_current_version(gem_line)
+      # Try to extract version from gem line
+      # Examples: gem "rails", "~> 7.0" or gem "rails", "7.0.0" or gem "rails", ">= 7.0", "< 8.0"
+      # Match first version string after gem name
+      version_match = gem_line.match(/gem\s+['"][^'"]+['"]\s*,\s*['"]([^'"]+)['"]/)
+      return nil unless version_match
+      
+      version_string = version_match[1]
+      # Extract semantic version (x.y.z) from version string, or return the full version string
+      semantic_version = version_string.match(/(\d+\.\d+\.\d+)/)
+      semantic_version ? semantic_version[1] : version_string
+    end
+
+    def print_version_updates
+      return if @version_updates.empty?
+
+      puts "\nThe following gems were updated:"
+      @version_updates.each do |update|
+        puts "  * #{update[:gem_name]} (#{update[:from_version]} -> #{update[:to_version]})"
+      end
+      puts "\nRun `bundle install` to install the updated gems."
+      puts ""
     end
 
   end

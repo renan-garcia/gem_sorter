@@ -510,4 +510,217 @@ RSpec.describe GemSorter::Sorter do
 
     expect(sorted_content.strip).to eq(expected_content.strip)
   end
+
+  describe 'force_update' do
+    let(:gemfile_with_versions) do
+      <<~GEMFILE
+        source "https://rubygems.org"
+
+        gem "rails", "~> 7.0"
+        gem "sinatra", "~> 2.0", group: :development
+        gem "faker"
+      GEMFILE
+    end
+
+    before do
+      # Mock RubyGems API response for latest versions
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_latest_version).and_return(nil)
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_latest_version).with('rails').and_return('8.0.0')
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_latest_version).with('sinatra').and_return('4.1.0')
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_latest_version).with('faker').and_return('3.5.0')
+
+      # Mock fetch_gemfile_text to return proper Gemfile format
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_gemfile_text).and_return(nil)
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_gemfile_text).with('rails', '8.0.0', anything).and_return("gem 'rails', '~> 8.0'")
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_gemfile_text).with('sinatra', '4.1.0', anything).and_return("gem 'sinatra', '~> 4.1'")
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_gemfile_text).with('faker', '3.5.0', anything).and_return("gem 'faker', '~> 3.5'")
+    end
+
+    it 'updates gems to latest versions from RubyGems when force_update is true' do
+      File.write(temp_gemfile_path, gemfile_with_versions)
+      task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path, force_update: true)
+      sorter = described_class.new(task_config)
+
+      sorted_content = nil
+      expect { sorted_content = sorter.sort }.to output(/The following gems were updated:/).to_stdout
+
+      expect(sorted_content).to include("gem 'rails', '~> 8.0'")
+      expect(sorted_content).to include("gem 'sinatra', '~> 4.1', group: :development")
+      expect(sorted_content).to include("gem 'faker', '~> 3.5'")
+    end
+
+    it 'prints version update summary when gems are updated' do
+      File.write(temp_gemfile_path, gemfile_with_versions)
+      task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path, force_update: true)
+      sorter = described_class.new(task_config)
+
+      expect { sorter.sort }.to output(
+        /The following gems were updated:.*Run `bundle install` to install the updated gems\./m
+      ).to_stdout
+    end
+
+    it 'prints correct version information in update summary' do
+      File.write(temp_gemfile_path, gemfile_with_versions)
+      task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path, force_update: true)
+      sorter = described_class.new(task_config)
+
+      expect { sorter.sort }.to output(
+        /rails.*8\.0\.0.*sinatra.*4\.1\.0/m
+      ).to_stdout
+    end
+
+    it 'ignores gems in ignore_gem_versions when force_update is true' do
+      File.write(temp_gemfile_path, gemfile_with_versions)
+      task_config = GemSorter::TaskConfig.new(
+        gemfile_path: temp_gemfile_path,
+        force_update: true,
+        ignore_gem_versions: ['sinatra']
+      )
+      sorter = described_class.new(task_config)
+      sorted_content = sorter.sort
+
+      expect(sorted_content).to include("gem 'rails', '~> 8.0'")
+      expect(sorted_content).to include('gem "sinatra", "~> 2.0", group: :development')
+      expect(sorted_content).to include("gem 'faker', '~> 3.5'")
+    end
+
+    it 'ignores gems in ignore_gems when force_update is true' do
+      File.write(temp_gemfile_path, gemfile_with_versions)
+      task_config = GemSorter::TaskConfig.new(
+        gemfile_path: temp_gemfile_path,
+        force_update: true,
+        ignore_gems: ['sinatra']
+      )
+      sorter = described_class.new(task_config)
+      sorted_content = sorter.sort
+
+      expect(sorted_content).to include("gem 'rails', '~> 8.0'")
+      expect(sorted_content).to include('gem "sinatra", "~> 2.0", group: :development')
+      expect(sorted_content).to include("gem 'faker', '~> 3.5'")
+    end
+
+    it 'preserves other gem parameters when force_update is true' do
+      gemfile_with_params = <<~GEMFILE
+        source "https://rubygems.org"
+
+        gem "rails", "~> 7.0", require: false
+        gem "sinatra", "~> 2.0", group: :development, platforms: [:ruby]
+      GEMFILE
+
+      File.write(temp_gemfile_path, gemfile_with_params)
+      task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path, force_update: true)
+      sorter = described_class.new(task_config)
+      sorted_content = sorter.sort
+
+      expect(sorted_content).to include("gem 'rails', '~> 8.0', require: false")
+      expect(sorted_content).to include("gem 'sinatra', '~> 4.1', group: :development, platforms: [:ruby]")
+    end
+
+    it 'uses latest version from RubyGems API, ignoring lockfile' do
+      lockfile_content = <<~LOCKFILE
+        GEM
+          remote: https://rubygems.org/
+          specs:
+            rails (7.1.0)
+            sinatra (2.2.0)
+      LOCKFILE
+
+      File.write(temp_gemfile_path, gemfile_with_versions)
+      File.write(temp_lockfile_path, lockfile_content)
+
+      task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path, force_update: true)
+      sorter = described_class.new(task_config)
+      sorted_content = sorter.sort
+
+      # Should use latest from API (8.0.0) not from lockfile (7.1.0)
+      expect(sorted_content).to include("gem 'rails', '~> 8.0'")
+      expect(sorted_content).not_to include("gem 'rails', '~> 7.1'")
+    end
+
+    it 'does not print update message when no gems are updated' do
+      gemfile_without_versions = <<~GEMFILE
+        source "https://rubygems.org"
+
+        gem "rails"
+        gem "sinatra"
+      GEMFILE
+
+      # Mock to return nil (gem not found or already at latest)
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_latest_version).and_return(nil)
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_gemfile_text).and_return(nil)
+
+      File.write(temp_gemfile_path, gemfile_without_versions)
+      task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path, force_update: true)
+      sorter = described_class.new(task_config)
+
+      expect { sorter.sort }.not_to output(/The following gems were updated:/).to_stdout
+    end
+
+    it 'handles gems in groups when force_update is true' do
+      gemfile_with_groups = <<~GEMFILE
+        source "https://rubygems.org"
+
+        gem "rails", "~> 7.0"
+
+        group :test do
+          gem "rspec", "~> 3.0"
+          gem "faker", "~> 2.0"
+        end
+      GEMFILE
+
+      # Override mocks from before block for this specific test
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_latest_version).and_call_original
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_latest_version).with('rails').and_return('8.0.0')
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_latest_version).with('rspec').and_return('3.13.0')
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_latest_version).with('faker').and_return('3.5.0')
+      
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_gemfile_text).and_call_original
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_gemfile_text).with('rails', '8.0.0', anything).and_return("gem 'rails', '~> 8.0'")
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_gemfile_text).with('rspec', '3.13.0', anything).and_return("gem 'rspec', '~> 3.13'")
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_gemfile_text).with('faker', '3.5.0', anything).and_return("gem 'faker', '~> 3.5'")
+
+      File.write(temp_gemfile_path, gemfile_with_groups)
+      task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path, force_update: true)
+      sorter = described_class.new(task_config)
+      sorted_content = sorter.sort
+
+      expect(sorted_content).to include("gem 'rails', '~> 8.0'")
+      expect(sorted_content).to include("gem 'rspec', '~> 3.13'")
+      expect(sorted_content).to include("gem 'faker', '~> 3.5'")
+    end
+
+    it 'uses force_update instead of update_versions when both are true' do
+      lockfile_content = <<~LOCKFILE
+        GEM
+          remote: https://rubygems.org/
+          specs:
+            rails (7.1.0)
+      LOCKFILE
+
+      gemfile_content = <<~GEMFILE
+        source "https://rubygems.org"
+
+        gem "rails"
+      GEMFILE
+
+      File.write(temp_gemfile_path, gemfile_content)
+      File.write(temp_lockfile_path, lockfile_content)
+
+      # Mock force_update to return latest version (8.0.0) instead of lockfile version (7.1.0)
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_latest_version).with('rails').and_return('8.0.0')
+      allow_any_instance_of(GemSorter::Sorter).to receive(:fetch_gemfile_text).with('rails', '8.0.0', anything).and_return("gem 'rails', '~> 8.0'")
+
+      task_config = GemSorter::TaskConfig.new(
+        gemfile_path: temp_gemfile_path,
+        force_update: true,
+        update_versions: true
+      )
+      sorter = described_class.new(task_config)
+      sorted_content = sorter.sort
+
+      # Should use latest from API (8.0.0) not from lockfile (7.1.0)
+      expect(sorted_content).to include("gem 'rails', '~> 8.0'")
+      expect(sorted_content).not_to include("gem 'rails', '~> 7.1'")
+    end
+  end
 end

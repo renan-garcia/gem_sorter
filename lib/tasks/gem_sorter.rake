@@ -3,8 +3,8 @@ require 'yaml'
 require 'task_config'
 
 namespace :gemfile do
-  desc 'Sort gems in Gemfile alphabetically. Options: [backup=true|false] [update_comments=true|false] [update_versions=true|false]'
-  task :sort, [:backup, :update_comments, :update_versions] do |_t, args|
+  desc 'Sort gems in Gemfile alphabetically. Options: [backup=true|false] [update_comments=true|false] [update_versions=true|false] [force_update=true|false]'
+  task :sort, [:backup, :update_comments, :update_versions, :force_update] do |_t, args|
     task_config = GemSorter::TaskConfig.new(args)
     
     if File.exist?(task_config.gemfile_path)

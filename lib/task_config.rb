@@ -10,6 +10,7 @@ module GemSorter
       'update_versions' => false,
       'use_double_quotes' => false,
       'remove_versions' => false,
+      'force_update' => false,
       'gemfile_path' => 'Gemfile',
       'ignore_gems' => [],
       'ignore_gem_versions' => [],
@@ -22,6 +23,7 @@ module GemSorter
       @update_versions = nil
       @use_double_quotes = nil
       @remove_versions = nil
+      @force_update = nil
       @ignore_gems = nil
       @ignore_gem_versions = nil
       @ignore_gem_comments = nil
@@ -47,6 +49,10 @@ module GemSorter
 
     def remove_versions
       @remove_versions.nil? ? DEFAULT_CONFIG['remove_versions'] : @remove_versions
+    end
+
+    def force_update
+      @force_update.nil? ? DEFAULT_CONFIG['force_update'] : @force_update
     end
 
     def ignore_gems
@@ -82,6 +88,7 @@ module GemSorter
       @gemfile_path = task_config['gemfile_path'] if task_config.key?('gemfile_path')
       @use_double_quotes = task_config['use_double_quotes'] if task_config.key?('use_double_quotes')
       @remove_versions = task_config['remove_versions'] if task_config.key?('remove_versions')
+      @force_update = task_config['force_update'] if task_config.key?('force_update')
       @ignore_gems = task_config['ignore_gems'] if task_config.key?('ignore_gems')
       @ignore_gem_versions = task_config['ignore_gem_versions'] if task_config.key?('ignore_gem_versions')
       @ignore_gem_comments = task_config['ignore_gem_comments'] if task_config.key?('ignore_gem_comments')
@@ -96,6 +103,7 @@ module GemSorter
       @gemfile_path = args[:gemfile_path] unless args[:gemfile_path].nil?
       @use_double_quotes = parse_boolean(args[:use_double_quotes]) unless args[:use_double_quotes].nil?
       @remove_versions = parse_boolean(args[:remove_versions]) unless args[:remove_versions].nil?
+      @force_update = parse_boolean(args[:force_update]) unless args[:force_update].nil?
       @ignore_gems = args[:ignore_gems] unless args[:ignore_gems].nil?
       @ignore_gem_versions = args[:ignore_gem_versions] unless args[:ignore_gem_versions].nil?
       @ignore_gem_comments = args[:ignore_gem_comments] unless args[:ignore_gem_comments].nil?

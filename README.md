@@ -46,6 +46,7 @@ rake -r gem_sorter gemfile:sort
 * `backup`: Pass `true` to create a backup of your Gemfile as `Gemfile.old` before sorting.
 * `update_comments`: Pass `true` to update the comments of the gems based on their descriptions.
 * `update_versions`: Pass `true` to update the versions of the gems based on the lockfile.
+* `force_update`: Pass `true` to update gems to their latest available versions from RubyGems, ignoring the lockfile. This will print a summary of updated gems and remind you to run `bundle install`.
 * `use_double_quotes`: Pass `true` to convert single quotes to double quotes in gem declarations.
 * `remove_versions`: Pass `true` to remove version constraints from gems while preserving other parameters like `require` or `platforms`. This option takes precedence over `update_versions` if both are enabled.
 
@@ -61,6 +62,7 @@ Create a file in the root of your project called `gem_sorter.yml`
 * `backup`: Pass `true` to create a backup of your Gemfile as `Gemfile.old` before sorting.
 * `update_comments`: Pass `true` to update the comments of the gems based on their descriptions.
 * `update_versions`: Pass `true` to update the versions of the gems based on the lockfile.
+* `force_update`: Pass `true` to update gems to their latest available versions from RubyGems, ignoring the lockfile. This will print a summary of updated gems and remind you to run `bundle install`.
 * `use_double_quotes`: Pass `true` to convert single quotes to double quotes in gem declarations.
 * `remove_versions`: Pass `true` to remove version constraints from gems while preserving other parameters like `require` or `platforms`. This option takes precedence over `update_versions` if both are enabled.
 * `ignore_gems`: Pass an array of GEMs you want to ignore versions and comments
@@ -73,6 +75,7 @@ Example:
 backup: true
 update_comments: true
 update_versions: false
+force_update: false
 use_double_quotes: true
 remove_versions: true
 ignore_gems:
