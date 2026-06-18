@@ -132,33 +132,34 @@ module GemSorter
         gem_name = extract_gem_name(gem_block[:gem_line])
         next if @config.ignore_gems.include?(gem_name) || @config.ignore_gem_versions.include?(gem_name)
 
-        # Try to get current version from lockfile first, then from gem line
-        current_version = @versions[gem_name] || extract_current_version(gem_block[:gem_line])
+        original_line = gem_block[:gem_line]
         latest_version = fetch_latest_version(gem_name)
-        
+
         next unless latest_version
 
-        extra_params = extract_params(gem_block[:gem_line])
-        new_gemfile_text = fetch_gemfile_text(gem_name, latest_version, gem_block[:gem_line])
-        
-        next unless new_gemfile_text && new_gemfile_text != gem_block[:gem_line]
-        
+        extra_params = extract_params(original_line)
+        new_gemfile_text = fetch_gemfile_text(gem_name, latest_version, original_line)
+
+        next unless new_gemfile_text && new_gemfile_text != original_line
+
         gem_block[:gem_line] = [new_gemfile_text.strip, extra_params].select { |value| !value.nil? && !value.empty? }.join(',')
-        
-        # Track version update if version changed
-        # Compare semantic versions (x.y.z) for accurate comparison
-        current_semantic = current_version&.match(/(\d+\.\d+\.\d+)/)
-        current_semantic = current_semantic ? current_semantic[1] : nil
-        latest_semantic = latest_version.match(/(\d+\.\d+\.\d+)/)
-        latest_semantic = latest_semantic ? latest_semantic[1] : nil
-        
-        if current_semantic != latest_semantic
-          @version_updates << {
-            gem_name: gem_name,
-            from_version: current_version || 'no version specified',
-            to_version: latest_version
-          }
-        end
+
+        # Only report a real version change. Compare the version constraint already
+        # declared in the Gemfile line against the one fetched from RubyGems, since
+        # the line can differ for cosmetic reasons (e.g. quote style) without the
+        # version actually changing. The lockfile is intentionally NOT used here: it
+        # stays stale until `bundle install` runs, which previously caused the same
+        # update to be reported on every run.
+        previous_constraint = extract_current_version(original_line)
+        new_constraint = extract_current_version(new_gemfile_text)
+
+        next if previous_constraint == new_constraint
+
+        @version_updates << {
+          gem_name: gem_name,
+          from_version: previous_constraint || 'no version specified',
+          to_version: latest_version
+        }
       end
     end
 

@@ -656,6 +656,22 @@ RSpec.describe GemSorter::Sorter do
       expect { sorter.sort }.not_to output(/The following gems were updated:/).to_stdout
     end
 
+    it 'does not report updates again when run a second time on already updated gems' do
+      File.write(temp_gemfile_path, gemfile_with_versions)
+      task_config = GemSorter::TaskConfig.new(gemfile_path: temp_gemfile_path, force_update: true)
+
+      # First run actually updates the gems and writes the result back.
+      first_run = described_class.new(task_config)
+      first_content = nil
+      expect { first_content = first_run.sort }.to output(/The following gems were updated:/).to_stdout
+      File.write(temp_gemfile_path, first_content)
+
+      # Second run on the already-updated Gemfile must not report anything,
+      # even though the lockfile (absent/stale) is not touched by the tool.
+      second_run = described_class.new(task_config)
+      expect { second_run.sort }.not_to output(/The following gems were updated:/).to_stdout
+    end
+
     it 'handles gems in groups when force_update is true' do
       gemfile_with_groups = <<~GEMFILE
         source "https://rubygems.org"
