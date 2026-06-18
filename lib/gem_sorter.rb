@@ -144,23 +144,23 @@ module GemSorter
 
         gem_block[:gem_line] = [new_gemfile_text.strip, extra_params].select { |value| !value.nil? && !value.empty? }.join(',')
 
-        # Only report a real version change. Compare the version constraint already
-        # declared in the Gemfile line against the one fetched from RubyGems, since
-        # the line can differ for cosmetic reasons (e.g. quote style) without the
-        # version actually changing. The lockfile is intentionally NOT used here: it
-        # stays stale until `bundle install` runs, which previously caused the same
-        # update to be reported on every run.
-        previous_constraint = extract_current_version(original_line)
-        new_constraint = extract_current_version(new_gemfile_text)
-
-        next if previous_constraint == new_constraint
+        next unless version_changed?(original_line, new_gemfile_text)
 
         @version_updates << {
           gem_name: gem_name,
-          from_version: previous_constraint || 'no version specified',
+          from_version: extract_current_version(original_line) || 'no version specified',
           to_version: latest_version
         }
       end
+    end
+
+    # Detects whether a gem line actually changed version between what is declared
+    # in the Gemfile and what RubyGems returns. The comparison is based purely on
+    # the version constraint, ignoring cosmetic differences (e.g. quote style), so
+    # re-running the task does not report the same update again. The lockfile is
+    # intentionally not consulted here: it stays stale until `bundle install` runs.
+    def version_changed?(original_line, new_gemfile_text)
+      extract_current_version(original_line) != extract_current_version(new_gemfile_text)
     end
 
     def remove_versions(gems)
