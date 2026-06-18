@@ -4,7 +4,14 @@ require 'cgi'
 require 'openssl'
 require 'json'
 
-load File.expand_path('tasks/gem_sorter.rake', __dir__) if defined?(Rake)
+# Inside a Rails app, let the Railtie register the rake tasks through Rails'
+# own task-loading pipeline (reliable and not tied to require order). When used
+# standalone (e.g. `rake -r gem_sorter gemfile:sort`), load the tasks directly.
+if defined?(Rails::Railtie)
+  require 'gem_sorter/railtie'
+elsif defined?(Rake)
+  load File.expand_path('tasks/gem_sorter.rake', __dir__)
+end
 
 module GemSorter
   class Sorter

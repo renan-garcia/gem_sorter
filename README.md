@@ -36,7 +36,20 @@ Once installed, you can use the provided Rake task to sort your Gemfile:
 rake gemfile:sort
 ```
 
-You can also run the gem_sorter globally, without needing to add it to your Gemfile:
+### Inside a Rails application
+When you add `gem_sorter` to a Rails app's `Gemfile`, the `gemfile:sort` task is
+registered automatically through a Railtie, using Rails' own task-loading
+pipeline. This means the task is reliably available under both `bin/rails` and
+`bin/rake`, and the gem no longer defines tasks during application boot:
+
+```bash
+bin/rails gemfile:sort
+# or
+bin/rake gemfile:sort
+```
+
+### Standalone (global)
+You can also run gem_sorter globally, without adding it to your Gemfile:
 
 ```bash
 rake -r gem_sorter gemfile:sort
