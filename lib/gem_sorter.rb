@@ -308,10 +308,10 @@ module GemSorter
           raise "Error: Could not fetch gem information from RubyGems for #{gem_name} version #{version}. Status: #{response.code}"
         end
         
-        match = response.body.match(/<input[^>]*id=["']gemfile_text["'][^>]*value=["']([^"']+)["']/)
+        gemfile_text = extract_gemfile_text_from_html(response.body)
 
-        if match
-          CGI.unescapeHTML(match[1])
+        if gemfile_text
+          gemfile_text
         else
           raise "Error: Could not extract Gemfile text for #{gem_name} version #{version}."
         end
@@ -321,6 +321,23 @@ module GemSorter
 
         original
       end
+    end
+
+    # Extracts the ready-to-paste Gemfile line from a RubyGems gem/version page.
+    #
+    # RubyGems renders it inside an <input id="gemfile_text"> element. The markup
+    # lists the attributes as `value="..." id="gemfile_text"` (value first), and
+    # the value itself may contain both single quotes and ">" characters, e.g.
+    #   <input type="text" value="gem 'rails', '>= 8.0'" id="gemfile_text" ...>
+    # so the value is captured by its own surrounding quote character rather than
+    # by relying on tag boundaries or attribute order. A second pattern covers the
+    # reverse `id="gemfile_text" ... value="..."` ordering just in case.
+    def extract_gemfile_text_from_html(body)
+      match = body.match(/\svalue=(["'])(.*?)\1(?=[^>]*\bid=["']gemfile_text["'])/m) ||
+              body.match(/\bid=["']gemfile_text["'][^>]*?\svalue=(["'])(.*?)\1/m)
+      return nil unless match
+
+      CGI.unescapeHTML(match[2])
     end
 
     def fetch_versions_from_lockfile(lockfile_path)

@@ -254,8 +254,8 @@ RSpec.describe GemSorter::Sorter do
     sorter = described_class.new(task_config)
     sorted_content = sorter.sort
 
-    expect(sorted_content).to include("gem 'rails', '~> 8.0'")
-    expect(sorted_content).to include("gem 'sinatra', '~> 4.1'")
+    expect(sorted_content).to include("gem 'rails', '>= 8.0'")
+    expect(sorted_content).to include("gem 'sinatra', '>= 4.1'")
     expect(sorted_content).to include('gem "faker"')
   end
 
@@ -358,10 +358,10 @@ RSpec.describe GemSorter::Sorter do
     sorter = described_class.new(task_config)
     sorted_content = sorter.sort
 
-    expect(sorted_content).to include("gem 'rails', '~> 8.0'")
+    expect(sorted_content).to include("gem 'rails', '>= 8.0'")
     expect(sorted_content).to include('gem "sinatra", group: :development')
-    expect(sorted_content).to include("gem 'faker', '~> 3.4'")
-    expect(sorted_content).to include("gem 'rspec', '~> 3.12'")
+    expect(sorted_content).to include("gem 'faker', '>= 3.4.2'")
+    expect(sorted_content).to include("gem 'rspec', '>= 3.12'")
   end
 
   it 'removes versions from gems when remove_versions is true' do
